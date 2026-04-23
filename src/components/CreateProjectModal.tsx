@@ -1,22 +1,31 @@
 import { useState } from "react";
-import { useStore } from "@/lib/store";
-import { X } from "lucide-react";
+import { useProjects } from "@/lib/projects";
+import { X, Loader2 } from "lucide-react";
 
 const COLORS = ["violet", "emerald", "amber", "rose", "sky", "indigo"];
 const ICONS = ["Folder", "Shield", "CreditCard", "Smartphone", "Cpu", "Rocket"];
 
 export function CreateProjectModal({ onClose }: { onClose: () => void }) {
-  const createProject = useStore((s) => s.createProject);
+  const { createProject } = useProjects();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("violet");
   const [icon, setIcon] = useState("Folder");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createProject({ name: name.trim(), description, color, icon });
-    onClose();
+    setBusy(true);
+    setError(null);
+    try {
+      await createProject({ name: name.trim(), description, color, icon });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project");
+      setBusy(false);
+    }
   };
 
   return (
@@ -90,6 +99,12 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        {error && (
+          <p className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error}
+          </p>
+        )}
+
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -100,8 +115,10 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
           </button>
           <button
             type="submit"
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
           >
+            {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Create Project
           </button>
         </div>
