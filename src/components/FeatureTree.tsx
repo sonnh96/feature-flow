@@ -19,7 +19,23 @@ interface Props {
 }
 
 export function FeatureTree({ projectId, selectedId, onSelect }: Props) {
-  const tree = useStore((s) => s.getTree(projectId));
+  const features = useStore((s) => s.features);
+  const filtered = features.filter((f) => f.projectId === projectId);
+  const map = new Map<string, FeatureNode>();
+  filtered.forEach((f) => map.set(f.id, { ...f, children: [] }));
+  const tree: FeatureNode[] = [];
+  map.forEach((node) => {
+    if (node.parentId && map.has(node.parentId)) {
+      map.get(node.parentId)!.children.push(node);
+    } else {
+      tree.push(node);
+    }
+  });
+  const sortRec = (nodes: FeatureNode[]) => {
+    nodes.sort((a, b) => a.order - b.order);
+    nodes.forEach((n) => sortRec(n.children));
+  };
+  sortRec(tree);
   const createFeature = useStore((s) => s.createFeature);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(() => {
