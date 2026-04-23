@@ -17,6 +17,8 @@ import { useProject } from "@/lib/projects";
 import type { Status, Priority, RelationType, AcceptanceCriterion } from "@/lib/types";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
 import { MarkdownEditor } from "./MarkdownEditor";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { nanoid } from "nanoid";
 
 const STATUSES: Status[] = ["todo", "in_progress", "done", "deprecated"];
