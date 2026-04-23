@@ -784,7 +784,7 @@ function AcceptanceCriteriaSection({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder="Add criterion…"
+          placeholder="Add criterion… (Markdown: **bold**, `code`, [link](url))"
           className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
         <button
