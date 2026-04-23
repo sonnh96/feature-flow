@@ -17,6 +17,8 @@ import { useProject } from "@/lib/projects";
 import type { Status, Priority, RelationType, AcceptanceCriterion } from "@/lib/types";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
 import { MarkdownEditor } from "./MarkdownEditor";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { nanoid } from "nanoid";
 
 const STATUSES: Status[] = ["todo", "in_progress", "done", "deprecated"];
@@ -733,18 +735,32 @@ function AcceptanceCriteriaSection({
                   className="flex-1 rounded border border-input bg-background px-1.5 py-0.5 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               ) : (
-                <span
+                <div
                   onDoubleClick={() => {
                     setEditDraft(a.text);
                     setEditingId(a.id);
                   }}
-                  className={`flex-1 cursor-text text-sm ${
+                  className={`prose-feature flex-1 cursor-text text-sm [&_p]:my-0 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs ${
                     a.done ? "text-muted-foreground line-through" : ""
                   }`}
-                  title="Double-click to edit"
+                  title="Double-click to edit (Markdown supported)"
                 >
-                  {a.text}
-                </span>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: (props) => (
+                        <a
+                          {...props}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline underline-offset-2"
+                        />
+                      ),
+                    }}
+                  >
+                    {a.text}
+                  </ReactMarkdown>
+                </div>
               )}
               <button
                 onClick={() => remove(a.id)}
@@ -768,7 +784,7 @@ function AcceptanceCriteriaSection({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder="Add criterion…"
+          placeholder="Add criterion… (Markdown: **bold**, `code`, [link](url))"
           className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
         <button
