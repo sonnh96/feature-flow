@@ -593,7 +593,8 @@ function LinkFeatureModal({
 }) {
   const [q, setQ] = useState("");
   const [type, setType] = useState<RelationType>("related_to");
-  const features = useStore((s) => s.getProjectFeatures(projectId));
+  const allFeatures = useStore((s) => s.features);
+  const features = allFeatures.filter((f) => f.projectId === projectId);
   const matches = features.filter(
     (f) =>
       f.id !== excludeId &&
