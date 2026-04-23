@@ -65,7 +65,7 @@ function FeaturePage() {
       </aside>
 
       <section className="flex-1 overflow-hidden">
-        <FeatureDetail featureId={featureId} onSelect={onSelect} projectName={project.name} projectId={project.id} />
+        <FeatureDetail featureId={featureId} onSelect={onSelect} />
       </section>
     </div>
   );

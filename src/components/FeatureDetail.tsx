@@ -12,6 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useStore, labelStatus, labelRelation } from "@/lib/store";
+import { useProject } from "@/lib/projects";
 import type { Status, Priority, RelationType } from "@/lib/types";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
 import { nanoid } from "nanoid";
@@ -31,7 +32,7 @@ export function FeatureDetail({
 }) {
   const feature = useStore((s) => s.getFeature(featureId));
   const breadcrumb = useStore((s) => s.getBreadcrumb(featureId));
-  const project = useStore((s) => (feature ? s.getProject(feature.projectId) : undefined));
+  const { project } = useProject(feature?.projectId);
   const children = useStore((s) => s.getChildren(featureId));
   const relations = useStore((s) => s.getRelations(featureId));
   const history = useStore((s) => s.getHistory(featureId));
