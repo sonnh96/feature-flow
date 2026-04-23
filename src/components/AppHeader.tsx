@@ -7,7 +7,7 @@ import { useGlobalSearch } from "./GlobalSearch";
 export function AppHeader() {
   const { theme, toggle } = useTheme();
   const open = useGlobalSearch((s) => s.isOpen ? () => {} : s.open);
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
 
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
 
