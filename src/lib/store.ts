@@ -78,6 +78,101 @@ export function labelProjectStatus(s: "active" | "archived"): string {
 
 let orderCounter = 1000;
 
+type SeedSpec = {
+  name: string;
+  status?: Status;
+  priority?: Priority;
+  tags?: string[];
+  description?: string;
+  assignee?: string | null;
+  children?: SeedSpec[];
+};
+
+const SEEDS_BY_PROJECT: Record<string, SeedSpec[]> = {
+  "seed-auth": [
+    {
+      name: "Email & Password Login",
+      status: "done",
+      priority: "high",
+      assignee: "You",
+      tags: ["core"],
+      description: "Standard email + password sign in.",
+    },
+    {
+      name: "OAuth Providers",
+      status: "in_progress",
+      priority: "high",
+      tags: ["oauth"],
+      children: [
+        { name: "Google Sign-In", status: "done", priority: "high" },
+        { name: "GitHub Sign-In", status: "in_progress", priority: "medium" },
+        { name: "Microsoft Sign-In", status: "todo", priority: "low" },
+      ],
+    },
+    {
+      name: "Multi-Factor Authentication",
+      status: "todo",
+      priority: "critical",
+      tags: ["security"],
+      children: [
+        { name: "TOTP Authenticator", status: "todo", priority: "high" },
+        { name: "SMS Backup Codes", status: "todo", priority: "medium" },
+      ],
+    },
+    { name: "Password Reset Flow", status: "done", priority: "medium", tags: ["core"] },
+  ],
+  "seed-billing": [
+    {
+      name: "Subscription Plans",
+      status: "in_progress",
+      priority: "high",
+      tags: ["pricing"],
+      children: [
+        { name: "Free Tier", status: "done", priority: "medium" },
+        { name: "Pro Tier", status: "in_progress", priority: "high" },
+        { name: "Enterprise Tier", status: "todo", priority: "high" },
+      ],
+    },
+    { name: "Invoice Generation (PDF)", status: "todo", priority: "medium", tags: ["docs"] },
+    { name: "Proration & Upgrades", status: "todo", priority: "high" },
+    { name: "Failed Payment Dunning", status: "todo", priority: "critical", tags: ["retention"] },
+  ],
+  "seed-mobile": [
+    {
+      name: "Offline-First Sync",
+      status: "in_progress",
+      priority: "critical",
+      tags: ["sync"],
+      children: [
+        { name: "Local SQLite cache", status: "done", priority: "high" },
+        { name: "Conflict resolution", status: "in_progress", priority: "high" },
+      ],
+    },
+    { name: "Push Notifications", status: "todo", priority: "high", tags: ["fcm", "apns"] },
+    { name: "Biometric Unlock", status: "todo", priority: "medium", tags: ["security"] },
+    { name: "Dark Mode", status: "done", priority: "low", tags: ["ui"] },
+  ],
+  "seed-internal": [
+    { name: "User Impersonation", status: "done", priority: "high", tags: ["ops"] },
+    { name: "Audit Log Viewer", status: "in_progress", priority: "medium" },
+    { name: "Feature Flag Toggles", status: "deprecated", priority: "low" },
+  ],
+};
+
+const DEFAULT_SEED: SeedSpec[] = [
+  { name: "Initial Scope", status: "todo", priority: "medium", description: "Define the first milestone." },
+  {
+    name: "Core Workflow",
+    status: "todo",
+    priority: "high",
+    children: [
+      { name: "Happy Path", status: "todo", priority: "high" },
+      { name: "Error States", status: "todo", priority: "medium" },
+    ],
+  },
+  { name: "Polish & QA", status: "todo", priority: "low" },
+];
+
 function buildSampleFeatures(projectId: string): { features: Feature[]; relations: Relation[]; history: HistoryEntry[] } {
   const mk = (
     p: Partial<Feature> & { name: string; parentId: string | null }
@@ -98,33 +193,35 @@ function buildSampleFeatures(projectId: string): { features: Feature[]; relation
     order: orderCounter++,
   });
 
-  const a = mk({
-    name: "Email & Password Login",
-    parentId: null,
-    status: "done",
-    priority: "high",
-    assignee: "You",
-    tags: ["core"],
-    description: "Standard email + password sign in.",
-  });
-  const b = mk({
-    name: "OAuth Providers",
-    parentId: null,
-    status: "in_progress",
-    priority: "high",
-    tags: ["oauth"],
-  });
-  const b1 = mk({ name: "Google Sign-In", parentId: b.id, status: "done", priority: "high" });
-  const b2 = mk({ name: "GitHub Sign-In", parentId: b.id, status: "in_progress", priority: "medium" });
-  const c = mk({ name: "Multi-Factor Authentication", parentId: null, status: "todo", priority: "critical", tags: ["security"] });
+  const features: Feature[] = [];
+  const walk = (specs: SeedSpec[], parentId: string | null) => {
+    for (const spec of specs) {
+      const f = mk({
+        name: spec.name,
+        parentId,
+        status: spec.status,
+        priority: spec.priority,
+        tags: spec.tags,
+        description: spec.description,
+        assignee: spec.assignee ?? null,
+      });
+      features.push(f);
+      if (spec.children?.length) walk(spec.children, f.id);
+    }
+  };
+  walk(SEEDS_BY_PROJECT[projectId] ?? DEFAULT_SEED, null);
 
-  const features = [a, b, b1, b2, c];
-  const relations: Relation[] = [
-    { id: nanoid(6), fromId: c.id, toId: a.id, type: "depends_on" },
-  ];
-  const history: HistoryEntry[] = [
-    { id: nanoid(6), featureId: a.id, user: "You", timestamp: now(), action: "Marked as Done" },
-  ];
+  const relations: Relation[] = [];
+  const history: HistoryEntry[] = features
+    .filter((f) => f.status === "done")
+    .slice(0, 2)
+    .map((f) => ({
+      id: nanoid(6),
+      featureId: f.id,
+      user: "You",
+      timestamp: now(),
+      action: "Marked as Done",
+    }));
   return { features, relations, history };
 }
 
