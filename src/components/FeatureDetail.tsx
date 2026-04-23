@@ -67,31 +67,6 @@ export function FeatureDetail({
     );
   }
 
-  const toggleAc = (id: string) => {
-    updateFeature(featureId, {
-      acceptanceCriteria: feature.acceptanceCriteria.map((a) =>
-        a.id === id ? { ...a, done: !a.done } : a
-      ),
-    });
-  };
-
-  const addAc = () => {
-    if (!acInput.trim()) return;
-    updateFeature(featureId, {
-      acceptanceCriteria: [
-        ...feature.acceptanceCriteria,
-        { id: nanoid(6), text: acInput.trim(), done: false },
-      ],
-    });
-    setAcInput("");
-  };
-
-  const removeAc = (id: string) => {
-    updateFeature(featureId, {
-      acceptanceCriteria: feature.acceptanceCriteria.filter((a) => a.id !== id),
-    });
-  };
-
   const addTag = () => {
     const t = tagInput.trim();
     if (!t || feature.tags.includes(t)) return;
