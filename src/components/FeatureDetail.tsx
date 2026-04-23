@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -10,11 +10,13 @@ import {
   X,
   Check,
   ExternalLink,
+  GripVertical,
 } from "lucide-react";
 import { useStore, labelStatus, labelRelation } from "@/lib/store";
 import { useProject } from "@/lib/projects";
-import type { Status, Priority, RelationType } from "@/lib/types";
+import type { Status, Priority, RelationType, AcceptanceCriterion } from "@/lib/types";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
+import { MarkdownEditor } from "./MarkdownEditor";
 import { nanoid } from "nanoid";
 
 const STATUSES: Status[] = ["todo", "in_progress", "done", "deprecated"];
@@ -64,31 +66,6 @@ export function FeatureDetail({
       </div>
     );
   }
-
-  const toggleAc = (id: string) => {
-    updateFeature(featureId, {
-      acceptanceCriteria: feature.acceptanceCriteria.map((a) =>
-        a.id === id ? { ...a, done: !a.done } : a
-      ),
-    });
-  };
-
-  const addAc = () => {
-    if (!acInput.trim()) return;
-    updateFeature(featureId, {
-      acceptanceCriteria: [
-        ...feature.acceptanceCriteria,
-        { id: nanoid(6), text: acInput.trim(), done: false },
-      ],
-    });
-    setAcInput("");
-  };
-
-  const removeAc = (id: string) => {
-    updateFeature(featureId, {
-      acceptanceCriteria: feature.acceptanceCriteria.filter((a) => a.id !== id),
-    });
-  };
 
   const addTag = () => {
     const t = tagInput.trim();
@@ -258,61 +235,19 @@ export function FeatureDetail({
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
               <Section title="Description">
-                <textarea
+                <MarkdownEditor
                   value={feature.description}
-                  onChange={(e) => updateFeature(featureId, { description: e.target.value })}
-                  placeholder="Write the feature description in Markdown… (headings, lists, code blocks all welcome)"
-                  className="w-full min-h-[200px] resize-y rounded-md border border-border bg-background p-3 font-mono text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
+                  onChange={(v) => updateFeature(featureId, { description: v })}
+                  placeholder="Write the feature description in Markdown… (headings, lists, code blocks, images all supported)"
                 />
               </Section>
 
-              <Section title="Acceptance Criteria">
-                <ul className="space-y-1.5">
-                  {feature.acceptanceCriteria.map((a) => (
-                    <li
-                      key={a.id}
-                      className="group flex items-start gap-2 rounded-md px-2 py-1 hover:bg-muted/50"
-                    >
-                      <button
-                        onClick={() => toggleAc(a.id)}
-                        className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border ${
-                          a.done
-                            ? "border-status-done bg-status-done text-white"
-                            : "border-border"
-                        }`}
-                      >
-                        {a.done && <Check className="h-3 w-3" />}
-                      </button>
-                      <span
-                        className={`flex-1 text-sm ${a.done ? "text-muted-foreground line-through" : ""}`}
-                      >
-                        {a.text}
-                      </span>
-                      <button
-                        onClick={() => removeAc(a.id)}
-                        className="opacity-0 group-hover:opacity-100"
-                      >
-                        <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    value={acInput}
-                    onChange={(e) => setAcInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addAc())}
-                    placeholder="Add criterion…"
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <button
-                    onClick={addAc}
-                    className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
-                  >
-                    Add
-                  </button>
-                </div>
-              </Section>
+              <AcceptanceCriteriaSection
+                items={feature.acceptanceCriteria}
+                onChange={(next) => updateFeature(featureId, { acceptanceCriteria: next })}
+                input={acInput}
+                setInput={setAcInput}
+              />
             </div>
 
             <div className="space-y-4">
@@ -695,5 +630,154 @@ function LinkFeatureModal({
         </ul>
       </div>
     </div>
+  );
+}
+
+function AcceptanceCriteriaSection({
+  items,
+  onChange,
+  input,
+  setInput,
+}: {
+  items: AcceptanceCriterion[];
+  onChange: (next: AcceptanceCriterion[]) => void;
+  input: string;
+  setInput: (v: string) => void;
+}) {
+  const dragId = useRef<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+
+  const doneCount = items.filter((i) => i.done).length;
+  const progress = items.length === 0 ? 0 : Math.round((doneCount / items.length) * 100);
+
+  const toggle = (id: string) =>
+    onChange(items.map((a) => (a.id === id ? { ...a, done: !a.done } : a)));
+  const remove = (id: string) => onChange(items.filter((a) => a.id !== id));
+  const update = (id: string, text: string) =>
+    onChange(items.map((a) => (a.id === id ? { ...a, text } : a)));
+
+  const add = () => {
+    const t = input.trim();
+    if (!t) return;
+    onChange([...items, { id: nanoid(6), text: t, done: false }]);
+    setInput("");
+  };
+
+  const handleDrop = (targetId: string) => {
+    const fromId = dragId.current;
+    dragId.current = null;
+    if (!fromId || fromId === targetId) return;
+    const fromIdx = items.findIndex((i) => i.id === fromId);
+    const toIdx = items.findIndex((i) => i.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const next = [...items];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    onChange(next);
+  };
+
+  return (
+    <Section title="Acceptance Criteria">
+      {items.length > 0 && (
+        <div className="mb-2 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-status-done transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {doneCount}/{items.length} · {progress}%
+          </span>
+        </div>
+      )}
+
+      <ul className="space-y-1">
+        {items.map((a) => {
+          const isEditing = editingId === a.id;
+          return (
+            <li
+              key={a.id}
+              draggable={!isEditing}
+              onDragStart={() => (dragId.current = a.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleDrop(a.id)}
+              className="group flex items-start gap-2 rounded-md px-1.5 py-1.5 hover:bg-muted/50"
+            >
+              <GripVertical className="mt-1 h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/40 opacity-0 group-hover:opacity-100" />
+              <button
+                onClick={() => toggle(a.id)}
+                className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors ${
+                  a.done
+                    ? "border-status-done bg-status-done text-white"
+                    : "border-border hover:border-status-done"
+                }`}
+                aria-label={a.done ? "Mark incomplete" : "Mark complete"}
+              >
+                {a.done && <Check className="h-3 w-3" />}
+              </button>
+              {isEditing ? (
+                <input
+                  autoFocus
+                  value={editDraft}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  onBlur={() => {
+                    if (editDraft.trim()) update(a.id, editDraft.trim());
+                    setEditingId(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  className="flex-1 rounded border border-input bg-background px-1.5 py-0.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              ) : (
+                <span
+                  onDoubleClick={() => {
+                    setEditDraft(a.text);
+                    setEditingId(a.id);
+                  }}
+                  className={`flex-1 cursor-text text-sm ${
+                    a.done ? "text-muted-foreground line-through" : ""
+                  }`}
+                  title="Double-click to edit"
+                >
+                  {a.text}
+                </span>
+              )}
+              <button
+                onClick={() => remove(a.id)}
+                className="opacity-0 group-hover:opacity-100"
+                aria-label="Remove criterion"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+              </button>
+            </li>
+          );
+        })}
+        {items.length === 0 && (
+          <li className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+            No criteria yet. Add what "done" looks like.
+          </li>
+        )}
+      </ul>
+
+      <div className="mt-2 flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+          placeholder="Add criterion…"
+          className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+        />
+        <button
+          onClick={add}
+          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add
+        </button>
+      </div>
+    </Section>
   );
 }
