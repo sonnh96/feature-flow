@@ -1,25 +1,43 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useProject } from "@/lib/projects";
 import { FeatureTree } from "@/components/FeatureTree";
 import { StatusDonut } from "@/components/StatusDonut";
 import { StatusBadge } from "@/components/StatusBadge";
+import { supabase } from "@/integrations/supabase/client";
 import type { Status } from "@/lib/types";
 
 export const Route = createFileRoute("/projects/$projectId")({
-  head: ({ params }) => ({
-    meta: [{ title: "Project — Featurebase" }],
-  }),
+  head: () => ({ meta: [{ title: "Project — Featurebase" }] }),
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw redirect({ to: "/auth" });
+  },
   component: ProjectOverview,
-  notFoundComponent: () => <div className="p-8">Project not found.</div>,
 });
 
 function ProjectOverview() {
   const { projectId } = Route.useParams();
-  const project = useStore((s) => s.getProject(projectId));
+  const { project, loading } = useProject(projectId);
   const features = useStore((s) => s.getProjectFeatures(projectId));
+  const ensureSeeded = useStore((s) => s.ensureSeeded);
   const navigate = useNavigate();
+
+  // Seed sample features only on first visit to a brand-new empty project
+  useEffect(() => {
+    if (project) ensureSeeded(project.id, true);
+  }, [project, ensureSeeded]);
+
+  if (loading) {
+    return (
+      <div className="grid h-[calc(100vh-3.5rem)] place-items-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -70,7 +88,9 @@ function ProjectOverview() {
       <section className="scroll-thin flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl px-8 py-8">
           <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {project.description || <span className="italic opacity-60">No description</span>}
+          </p>
 
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Stat label="Total features" value={features.length} />

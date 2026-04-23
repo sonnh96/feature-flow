@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useStore } from "@/lib/store";
+import { useProjects } from "@/lib/projects";
 import { Search, X, ChevronRight } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 
@@ -28,7 +29,7 @@ export function GlobalSearch() {
   const navigate = useNavigate();
 
   const features = useStore((s) => s.features);
-  const projects = useStore((s) => s.projects);
+  const { projects } = useProjects();
   const getBreadcrumb = useStore((s) => s.getBreadcrumb);
 
   // try to read current project from URL

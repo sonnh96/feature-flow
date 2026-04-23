@@ -1,18 +1,31 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
+import { ChevronLeft, Loader2 } from "lucide-react";
+import { useProject } from "@/lib/projects";
 import { FeatureTree } from "@/components/FeatureTree";
 import { FeatureDetail } from "@/components/FeatureDetail";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/projects/$projectId/features/$featureId")({
   head: () => ({ meta: [{ title: "Feature — Featurebase" }] }),
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw redirect({ to: "/auth" });
+  },
   component: FeaturePage,
 });
 
 function FeaturePage() {
   const { projectId, featureId } = Route.useParams();
-  const project = useStore((s) => s.getProject(projectId));
+  const { project, loading } = useProject(projectId);
   const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="grid h-[calc(100vh-3.5rem)] place-items-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
 
   if (!project) {
     return (

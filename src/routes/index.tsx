@@ -1,9 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { format } from "date-fns";
-import { Plus, Search, Folder, Shield, CreditCard, Smartphone, Cpu, Rocket } from "lucide-react";
+import { Plus, Search, Folder, Shield, CreditCard, Smartphone, Cpu, Rocket, Loader2 } from "lucide-react";
+import { useProjects } from "@/lib/projects";
 import { useStore, labelProjectStatus } from "@/lib/store";
 import { CreateProjectModal } from "@/components/CreateProjectModal";
+import { supabase } from "@/integrations/supabase/client";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Folder,
@@ -24,11 +26,17 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      throw redirect({ to: "/auth" });
+    }
+  },
   component: Dashboard,
 });
 
 function Dashboard() {
-  const projects = useStore((s) => s.projects);
+  const { projects, loading } = useProjects();
   const features = useStore((s) => s.features);
   const [filter, setFilter] = useState<"all" | "active" | "archived">("all");
   const [query, setQuery] = useState("");
@@ -82,50 +90,71 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((p) => {
-          const Icon = ICON_MAP[p.icon] ?? Folder;
-          const count = features.filter((f) => f.projectId === p.id).length;
-          return (
-            <Link
-              key={p.id}
-              to="/projects/$projectId"
-              params={{ projectId: p.id }}
-              className="group relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-elevated)]"
-            >
-              <div className="flex items-start justify-between">
-                <div className="grid h-10 w-10 place-items-center rounded-lg bg-[image:var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-soft)]">
-                  <Icon className="h-5 w-5" />
+      {loading ? (
+        <div className="grid place-items-center py-24 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border p-12 text-center">
+          <h3 className="text-base font-medium">Welcome to Featurebase</h3>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+            You don't have any projects yet. Create your first project to start documenting features.
+          </p>
+          <button
+            onClick={() => setCreating(true)}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground shadow-[var(--shadow-soft)] hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" /> Create your first project
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((p) => {
+            const Icon = ICON_MAP[p.icon] ?? Folder;
+            const count = features.filter((f) => f.projectId === p.id).length;
+            return (
+              <Link
+                key={p.id}
+                to="/projects/$projectId"
+                params={{ projectId: p.id }}
+                className="group relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-elevated)]"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-[image:var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-soft)]">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span
+                    className={`rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                      p.status === "active"
+                        ? "border-status-done/30 bg-status-done/10 text-status-done"
+                        : "border-border bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {labelProjectStatus(p.status)}
+                  </span>
                 </div>
-                <span
-                  className={`rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-                    p.status === "active"
-                      ? "border-status-done/30 bg-status-done/10 text-status-done"
-                      : "border-border bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {labelProjectStatus(p.status)}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold">{p.name}</h3>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.description}</p>
-              </div>
-              <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-                <span>
-                  <span className="font-medium tabular-nums text-foreground">{count}</span> features
-                </span>
-                <span>Updated {format(new Date(p.updatedAt), "MMM d")}</span>
-              </div>
-            </Link>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="col-span-full rounded-xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
-            No projects match.
-          </div>
-        )}
-      </div>
+                <div>
+                  <h3 className="text-base font-semibold">{p.name}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    {p.description || <span className="italic opacity-60">No description</span>}
+                  </p>
+                </div>
+                <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+                  <span>
+                    <span className="font-medium tabular-nums text-foreground">{count}</span> features
+                  </span>
+                  <span>Updated {format(new Date(p.updatedAt), "MMM d")}</span>
+                </div>
+              </Link>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="col-span-full rounded-xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
+              No projects match your filters.
+            </div>
+          )}
+        </div>
+      )}
 
       {creating && <CreateProjectModal onClose={() => setCreating(false)} />}
     </div>
