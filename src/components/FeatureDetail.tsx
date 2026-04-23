@@ -260,61 +260,19 @@ export function FeatureDetail({
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
               <Section title="Description">
-                <textarea
+                <MarkdownEditor
                   value={feature.description}
-                  onChange={(e) => updateFeature(featureId, { description: e.target.value })}
-                  placeholder="Write the feature description in Markdown… (headings, lists, code blocks all welcome)"
-                  className="w-full min-h-[200px] resize-y rounded-md border border-border bg-background p-3 font-mono text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
+                  onChange={(v) => updateFeature(featureId, { description: v })}
+                  placeholder="Write the feature description in Markdown… (headings, lists, code blocks, images all supported)"
                 />
               </Section>
 
-              <Section title="Acceptance Criteria">
-                <ul className="space-y-1.5">
-                  {feature.acceptanceCriteria.map((a) => (
-                    <li
-                      key={a.id}
-                      className="group flex items-start gap-2 rounded-md px-2 py-1 hover:bg-muted/50"
-                    >
-                      <button
-                        onClick={() => toggleAc(a.id)}
-                        className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border ${
-                          a.done
-                            ? "border-status-done bg-status-done text-white"
-                            : "border-border"
-                        }`}
-                      >
-                        {a.done && <Check className="h-3 w-3" />}
-                      </button>
-                      <span
-                        className={`flex-1 text-sm ${a.done ? "text-muted-foreground line-through" : ""}`}
-                      >
-                        {a.text}
-                      </span>
-                      <button
-                        onClick={() => removeAc(a.id)}
-                        className="opacity-0 group-hover:opacity-100"
-                      >
-                        <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    value={acInput}
-                    onChange={(e) => setAcInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addAc())}
-                    placeholder="Add criterion…"
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <button
-                    onClick={addAc}
-                    className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
-                  >
-                    Add
-                  </button>
-                </div>
-              </Section>
+              <AcceptanceCriteriaSection
+                items={feature.acceptanceCriteria}
+                onChange={(next) => updateFeature(featureId, { acceptanceCriteria: next })}
+                input={acInput}
+                setInput={setAcInput}
+              />
             </div>
 
             <div className="space-y-4">
