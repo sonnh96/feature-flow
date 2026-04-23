@@ -34,20 +34,36 @@ export function FeatureDetail({
   featureId: string;
   onSelect: (id: string) => void;
 }) {
-  const feature = useStore((s) => s.getFeature(featureId));
-  const breadcrumb = useStore((s) => s.getBreadcrumb(featureId));
+  const allFeatures = useStore((s) => s.features);
+  const allRelations = useStore((s) => s.relations);
+  const allHistory = useStore((s) => s.history);
+  const feature = allFeatures.find((f) => f.id === featureId);
   const { project } = useProject(feature?.projectId);
-  const children = useStore((s) => s.getChildren(featureId));
-  const relations = useStore((s) => s.getRelations(featureId));
-  const history = useStore((s) => s.getHistory(featureId));
   const updateFeature = useStore((s) => s.updateFeature);
   const deleteFeature = useStore((s) => s.deleteFeature);
   const duplicateFeature = useStore((s) => s.duplicateFeature);
   const createFeature = useStore((s) => s.createFeature);
   const addRelation = useStore((s) => s.addRelation);
   const removeRelation = useStore((s) => s.removeRelation);
-  const allFeatures = useStore((s) => s.features);
   const getBreadcrumb = useStore((s) => s.getBreadcrumb);
+
+  const breadcrumb = (() => {
+    const trail: typeof allFeatures = [];
+    let cur = allFeatures.find((f) => f.id === featureId);
+    while (cur) {
+      trail.unshift(cur);
+      const parentId = cur.parentId;
+      cur = parentId ? allFeatures.find((f) => f.id === parentId) : undefined;
+    }
+    return trail;
+  })();
+  const children = allFeatures
+    .filter((f) => f.parentId === featureId)
+    .sort((a, b) => a.order - b.order);
+  const relations = allRelations.filter((r) => r.fromId === featureId || r.toId === featureId);
+  const history = allHistory
+    .filter((h) => h.featureId === featureId)
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
   const [tab, setTab] = useState<Tab>("description");
   const [editingName, setEditingName] = useState(false);
@@ -577,7 +593,8 @@ function LinkFeatureModal({
 }) {
   const [q, setQ] = useState("");
   const [type, setType] = useState<RelationType>("related_to");
-  const features = useStore((s) => s.getProjectFeatures(projectId));
+  const allFeatures = useStore((s) => s.features);
+  const features = allFeatures.filter((f) => f.projectId === projectId);
   const matches = features.filter(
     (f) =>
       f.id !== excludeId &&

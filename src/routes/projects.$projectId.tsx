@@ -22,7 +22,8 @@ export const Route = createFileRoute("/projects/$projectId")({
 function ProjectOverview() {
   const { projectId } = Route.useParams();
   const { project, loading } = useProject(projectId);
-  const features = useStore((s) => s.getProjectFeatures(projectId));
+  const allFeatures = useStore((s) => s.features);
+  const features = allFeatures.filter((f) => f.projectId === projectId);
   const ensureSeeded = useStore((s) => s.ensureSeeded);
   const navigate = useNavigate();
 
