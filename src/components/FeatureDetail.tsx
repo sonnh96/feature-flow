@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -10,11 +10,13 @@ import {
   X,
   Check,
   ExternalLink,
+  GripVertical,
 } from "lucide-react";
 import { useStore, labelStatus, labelRelation } from "@/lib/store";
 import { useProject } from "@/lib/projects";
-import type { Status, Priority, RelationType } from "@/lib/types";
+import type { Status, Priority, RelationType, AcceptanceCriterion } from "@/lib/types";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
+import { MarkdownEditor } from "./MarkdownEditor";
 import { nanoid } from "nanoid";
 
 const STATUSES: Status[] = ["todo", "in_progress", "done", "deprecated"];
