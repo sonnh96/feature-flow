@@ -50,6 +50,11 @@ export function AppHeader() {
         </button>
         {user ? (
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                Admin
+              </span>
+            )}
             <div
               title={user.email ?? ""}
               className="grid h-8 w-8 place-items-center rounded-full bg-[image:var(--gradient-primary)] text-xs font-semibold text-primary-foreground"
