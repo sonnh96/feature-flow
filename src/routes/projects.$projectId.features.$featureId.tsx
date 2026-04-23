@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { useProject } from "@/lib/projects";
+import { useStore } from "@/lib/store";
 import { FeatureTree } from "@/components/FeatureTree";
 import { FeatureDetail } from "@/components/FeatureDetail";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +19,12 @@ export const Route = createFileRoute("/projects/$projectId/features/$featureId")
 function FeaturePage() {
   const { projectId, featureId } = Route.useParams();
   const { project, loading } = useProject(projectId);
+  const ensureSeeded = useStore((s) => s.ensureSeeded);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (project) ensureSeeded(project.id, true);
+  }, [project, ensureSeeded]);
 
   if (loading) {
     return (
