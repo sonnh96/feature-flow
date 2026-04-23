@@ -1,6 +1,7 @@
-import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
+import { AuthProvider } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -48,15 +49,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const isAuthPage = path === "/auth";
+
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen flex-col">
-        <AppHeader />
-        <main className="flex-1">
-          <Outlet />
-        </main>
-        <GlobalSearch />
-      </div>
+      <AuthProvider>
+        <div className="flex min-h-screen flex-col">
+          {!isAuthPage && <AppHeader />}
+          <main className="flex-1">
+            <Outlet />
+          </main>
+          {!isAuthPage && <GlobalSearch />}
+        </div>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
