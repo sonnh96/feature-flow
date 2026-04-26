@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import projects_router, features_router, versions_router, search_router, auth_router
+from app.api.v1 import projects_router, features_router, versions_router, search_router, auth_router, roles_router
 
 app = FastAPI(title="Feature Intelligence API")
 
@@ -13,6 +13,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(roles_router, prefix="/api/v1/roles", tags=["roles"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(features_router, prefix="/api/v1/features", tags=["features"])
 app.include_router(versions_router, prefix="/api/v1/features/{feature_id}/versions", tags=["versions"])
