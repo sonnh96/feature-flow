@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from app.db import models
 from app.schemas import GitNexusIngestRequest, ProjectCreate, ProjectSyncRequest, ProjectUpdate
 from app.services.feature_intelligence import sync_project_from_snapshot
 from app.services.gitnexus_reader import GitNexusReaderError, build_project_sync_request_from_gitnexus
+from app.services.srs_import import import_srs_documents, read_import_documents
 
 
 router = APIRouter()
@@ -152,6 +153,35 @@ async def list_project_features(
         else:
             roots.append(feature)
     return roots
+
+
+@router.post("/{project_id}/features/import")
+async def import_project_features(
+    project_id: UUID,
+    files: list[UploadFile] = File(...),
+    skip_existing: bool = Form(default=True),
+    current_user: User = Depends(require_permission("feature", "create")),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await db.get(models.Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    documents = await read_import_documents(files)
+    result = await import_srs_documents(
+        db,
+        project=project,
+        documents=documents,
+        requested_by=current_user.email,
+        skip_existing=skip_existing,
+    )
+    return {
+        "project_id": str(project.id),
+        "total_documents": result.total_documents,
+        "created_count": len(result.created),
+        "skipped_count": len(result.skipped),
+        "created": [feature_to_dict(feature) for feature in result.created],
+        "skipped": result.skipped,
+    }
 
 
 @router.get("/{project_id}/review-tasks")

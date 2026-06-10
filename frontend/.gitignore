@@ -1,0 +1,52 @@
+.gitnexus
+
+# Node / frontend
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+.vite/
+
+# Bun
+.bun/
+
+# Local env files
+.env
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Caches
+.cache/
+.parcel-cache/
+
+# Storybook
+.storybook-static
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Misc
+*.log
+.env*

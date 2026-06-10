@@ -1,4 +1,4 @@
-import { Outlet, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { Outlet, createRootRoute, HeadContent, useRouterState } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
@@ -18,7 +18,6 @@ export const Route = createRootRoute({
       },
       { property: "og:title", content: "Featurebase — Feature Documentation Manager" },
       { name: "twitter:title", content: "Featurebase — Feature Documentation Manager" },
-      { name: "description", content: "Feature Flow manages software feature documentation hierarchically." },
       { property: "og:description", content: "Feature Flow manages software feature documentation hierarchically." },
       { name: "twitter:description", content: "Feature Flow manages software feature documentation hierarchically." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9f0af791-96da-4b06-afbb-ad1b298d21e7/id-preview-89d52cb1--f4421008-23f9-44b9-ad30-c1098b2893b6.lovable.app-1776916467176.png" },
@@ -26,36 +25,33 @@ export const Route = createRootRoute({
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap",
+      },
+      { rel: "stylesheet", href: appCss },
+    ],
   }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: () => (
-    <div className="grid min-h-screen place-items-center px-4 text-center">
+    <div className="grid min-h-dvh place-items-center px-4 text-center">
       <div>
-        <h1 className="text-6xl font-bold">404</h1>
-        <p className="mt-2 text-muted-foreground">Page not found.</p>
-        <a href="/" className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">404</p>
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight">Page not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">The page you're looking for doesn't exist.</p>
+        <a
+          href="/"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:opacity-90 active:scale-[0.97]"
+        >
           Go home
         </a>
       </div>
     </div>
   ),
 });
-
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
 
 function RootComponent() {
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -64,6 +60,7 @@ function RootComponent() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <HeadContent />
         <div className="flex min-h-screen flex-col">
           {!isAuthPage && <AppHeader />}
           <main className="flex-1">

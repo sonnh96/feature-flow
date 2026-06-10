@@ -10,6 +10,7 @@ from datetime import datetime
 
 from alembic import op
 import sqlalchemy as sa
+import sqlalchemy.dialects.postgresql as pg
 
 
 revision = "0003"
@@ -54,7 +55,7 @@ def upgrade():
     # 1. Create roles table
     op.create_table(
         "roles",
-        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("id", pg.UUID(as_uuid=True), primary_key=True),
         sa.Column("name", sa.String(50), unique=True, nullable=False),
         sa.Column("description", sa.String(255), nullable=True),
         sa.Column("created_at", sa.DateTime, default=datetime.utcnow),
@@ -63,7 +64,7 @@ def upgrade():
     # 2. Create permissions table
     op.create_table(
         "permissions",
-        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("id", pg.UUID(as_uuid=True), primary_key=True),
         sa.Column("resource", sa.String(50), nullable=False),
         sa.Column("action", sa.String(50), nullable=False),
         sa.Column("created_at", sa.DateTime, default=datetime.utcnow),
@@ -73,16 +74,16 @@ def upgrade():
     # 3. Create user_roles join table
     op.create_table(
         "user_roles",
-        sa.Column("user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("role_id", sa.String(36), sa.ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("user_id", pg.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("role_id", pg.UUID(as_uuid=True), sa.ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
         sa.Column("created_at", sa.DateTime, default=datetime.utcnow),
     )
 
     # 4. Create role_permissions join table
     op.create_table(
         "role_permissions",
-        sa.Column("role_id", sa.String(36), sa.ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("permission_id", sa.String(36), sa.ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("role_id", pg.UUID(as_uuid=True), sa.ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("permission_id", pg.UUID(as_uuid=True), sa.ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True),
     )
 
     # 5. Add hashed_password to users table (nullable initially for existing rows)
@@ -96,7 +97,7 @@ def upgrade():
     # 7. Seed default permissions
     permissions_table = sa.table(
         "permissions",
-        sa.column("id", sa.String),
+        sa.column("id", pg.UUID(as_uuid=True)),
         sa.column("resource", sa.String),
         sa.column("action", sa.String),
         sa.column("created_at", sa.DateTime),
@@ -115,15 +116,15 @@ def upgrade():
     # 8. Seed default roles
     roles_table = sa.table(
         "roles",
-        sa.column("id", sa.String),
+        sa.column("id", pg.UUID(as_uuid=True)),
         sa.column("name", sa.String),
         sa.column("description", sa.String),
         sa.column("created_at", sa.DateTime),
     )
     role_permissions_table = sa.table(
         "role_permissions",
-        sa.column("role_id", sa.String),
-        sa.column("permission_id", sa.String),
+        sa.column("role_id", pg.UUID(as_uuid=True)),
+        sa.column("permission_id", pg.UUID(as_uuid=True)),
     )
     for role_name, role_data in DEFAULT_ROLES.items():
         rid = str(uuid.uuid4())

@@ -18,16 +18,21 @@ export const Route = createFileRoute("/projects/$projectId/features/$featureId")
 function FeaturePage() {
   const { projectId, featureId } = Route.useParams();
   const { project, loading } = useProject(projectId);
-  const ensureSeeded = useStore((s) => s.ensureSeeded);
+  const loadProjectFeatures = useStore((s) => s.loadProjectFeatures);
+  const loadFeatureDetail = useStore((s) => s.loadFeatureDetail);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (project) ensureSeeded(project.id, true);
-  }, [project, ensureSeeded]);
+    loadProjectFeatures(projectId);
+  }, [projectId, loadProjectFeatures]);
+
+  useEffect(() => {
+    loadFeatureDetail(featureId);
+  }, [featureId, loadFeatureDetail]);
 
   if (loading) {
     return (
-      <div className="grid h-[calc(100vh-3.5rem)] place-items-center text-muted-foreground">
+      <div className="grid h-[calc(100dvh-3.5rem)] place-items-center text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -36,7 +41,10 @@ function FeaturePage() {
   if (!project) {
     return (
       <div className="p-8 text-sm text-muted-foreground">
-        Project not found. <Link to="/" className="text-primary underline">Go back</Link>
+        Project not found.{" "}
+        <Link to="/" className="text-primary underline">
+          Go back
+        </Link>
       </div>
     );
   }
@@ -48,24 +56,24 @@ function FeaturePage() {
     });
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
-      <aside className="w-[320px] shrink-0 border-r border-sidebar-border bg-sidebar">
+    <div className="flex h-[calc(100dvh-3.5rem)]">
+      <aside className="w-[300px] shrink-0 border-r border-sidebar-border bg-sidebar">
         <div className="border-b border-sidebar-border px-4 py-3">
           <Link
             to="/"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> All projects
           </Link>
           <Link
             to="/projects/$projectId"
             params={{ projectId }}
-            className="mt-1.5 block truncate text-sm font-semibold hover:text-primary"
+            className="mt-1.5 block truncate text-sm font-semibold transition-colors hover:text-primary"
           >
             {project.name}
           </Link>
         </div>
-        <div className="h-[calc(100%-65px)]">
+        <div className="h-[calc(100%-61px)]">
           <FeatureTree projectId={projectId} selectedId={featureId} onSelect={onSelect} />
         </div>
       </aside>

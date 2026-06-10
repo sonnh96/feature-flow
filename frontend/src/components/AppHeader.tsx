@@ -6,36 +6,35 @@ import { useGlobalSearch } from "./GlobalSearch";
 
 export function AppHeader() {
   const { theme, toggle } = useTheme();
-  const open = useGlobalSearch((s) => s.isOpen ? () => {} : s.open);
   const { user, signOut, isAdmin } = useAuth();
 
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur">
-      <Link to="/" className="flex items-center gap-2 font-semibold">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-[image:var(--gradient-primary)] text-primary-foreground">
+    <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur-md">
+      <Link to="/" className="flex shrink-0 items-center gap-2.5 font-semibold">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-[image:var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-soft)]">
           <GitBranch className="h-4 w-4" />
         </span>
-        <span className="text-sm tracking-tight">Featurebase</span>
+        <span className="text-sm font-semibold tracking-tight">Featurebase</span>
       </Link>
 
       {user && (
         <button
           onClick={() => useGlobalSearch.getState().open()}
-          className="ml-4 hidden h-9 flex-1 max-w-xl items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:flex"
+          className="ml-2 hidden h-8 flex-1 max-w-sm cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 text-sm text-muted-foreground transition-all hover:border-border/80 hover:bg-muted md:flex"
         >
-          <Search className="h-4 w-4" />
-          <span className="flex-1 text-left">Search features, tags, assignees…</span>
-          <kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>
+          <Search className="h-3.5 w-3.5" />
+          <span className="flex-1 text-left text-[13px]">Search features…</span>
+          <kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
         </button>
       )}
 
-      <div className="flex flex-1 justify-end items-center gap-2 md:flex-initial">
+      <div className="flex flex-1 items-center justify-end gap-1 md:flex-initial">
         {user && (
           <button
             onClick={() => useGlobalSearch.getState().open()}
-            className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted md:hidden"
+            className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.93] md:hidden"
             aria-label="Search"
           >
             <Search className="h-4 w-4" />
@@ -43,27 +42,27 @@ export function AppHeader() {
         )}
         <button
           onClick={toggle}
-          className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+          className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.93]"
           aria-label="Toggle theme"
         >
           {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </button>
         {user ? (
-          <div className="flex items-center gap-2">
+          <div className="ml-1 flex items-center gap-2">
             {isAdmin && (
-              <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              <span className="rounded border border-primary/20 bg-primary/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
                 Admin
               </span>
             )}
             <div
               title={user.email ?? ""}
-              className="grid h-8 w-8 place-items-center rounded-full bg-[image:var(--gradient-primary)] text-xs font-semibold text-primary-foreground"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[image:var(--gradient-primary)] text-[11px] font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
             >
               {initials}
             </div>
             <button
               onClick={() => signOut()}
-              className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.93]"
               aria-label="Sign out"
               title="Sign out"
             >
@@ -73,7 +72,7 @@ export function AppHeader() {
         ) : (
           <Link
             to="/auth"
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+            className="ml-2 rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:opacity-90 active:scale-[0.97]"
           >
             Sign in
           </Link>

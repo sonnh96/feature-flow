@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
 import {
   ChevronRight,
   ChevronDown,
@@ -10,6 +9,7 @@ import {
   CheckCircle2,
   Archive,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { FeatureNode, Status } from "@/lib/types";
 import { labelFeatureType, useStore } from "@/lib/store";
 
@@ -78,15 +78,23 @@ export function FeatureTree({ projectId, selectedId, onSelect }: Props) {
     return node.children.some(matches);
   };
 
-  const addRoot = () => {
-    const f = createFeature({ projectId, parentId: null, name: "Untitled Feature" });
-    onSelect(f.id);
+  const addRoot = async () => {
+    try {
+      const f = await createFeature({ projectId, parentId: null, name: "Untitled Feature" });
+      onSelect(f.id);
+    } catch {
+      toast.error("Failed to create feature");
+    }
   };
 
-  const addChild = (parentId: string) => {
-    const f = createFeature({ projectId, parentId, name: "Untitled Sub-feature" });
-    setExpanded((s) => new Set(s).add(parentId));
-    onSelect(f.id);
+  const addChild = async (parentId: string) => {
+    try {
+      const f = await createFeature({ projectId, parentId, name: "Untitled Sub-feature" });
+      setExpanded((s) => new Set(s).add(parentId));
+      onSelect(f.id);
+    } catch {
+      toast.error("Failed to create sub-feature");
+    }
   };
 
   const renderNode = (node: FeatureNode, depth: number): React.ReactNode => {
@@ -98,28 +106,32 @@ export function FeatureTree({ projectId, selectedId, onSelect }: Props) {
     return (
       <div key={node.id}>
         <div
-          className={`group flex items-center gap-1 rounded-md py-1 pr-1 text-sm transition-colors ${
-            isSelected ? "bg-sidebar-accent text-foreground" : "hover:bg-muted/60"
+          className={`group flex items-center gap-1 rounded-lg py-1 pr-1 text-sm transition-all ${
+            isSelected
+              ? "bg-sidebar-accent text-foreground shadow-[var(--shadow-soft)]"
+              : "hover:bg-muted/50"
           }`}
           style={{ paddingLeft: 4 + depth * 14 }}
         >
-          <button
-            onClick={() => hasChildren && toggle(node.id)}
-            className="grid h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-muted"
-          >
-            {hasChildren ? (
-              isOpen ? (
+          {hasChildren ? (
+            <button
+              onClick={() => toggle(node.id)}
+              className="grid h-5 w-5 cursor-pointer place-items-center rounded text-muted-foreground hover:bg-muted"
+            >
+              {isOpen ? (
                 <ChevronDown className="h-3.5 w-3.5" />
               ) : (
                 <ChevronRight className="h-3.5 w-3.5" />
-              )
-            ) : (
+              )}
+            </button>
+          ) : (
+            <span className="grid h-5 w-5 place-items-center">
               <span className="h-1.5 w-1.5 rounded-full bg-border" />
-            )}
-          </button>
+            </span>
+          )}
           <button
             onClick={() => onSelect(node.id)}
-            className="flex min-w-0 flex-1 items-center gap-2 py-0.5 text-left"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-0.5 text-left"
           >
             <StatusIcon status={node.status} />
             <span className="min-w-0 flex-1">
@@ -135,7 +147,7 @@ export function FeatureTree({ projectId, selectedId, onSelect }: Props) {
           </button>
           <button
             onClick={() => addChild(node.id)}
-            className="grid h-5 w-5 place-items-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+            className="grid h-5 w-5 cursor-pointer place-items-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
             title="Add sub-feature"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -171,7 +183,7 @@ export function FeatureTree({ projectId, selectedId, onSelect }: Props) {
       <div className="border-t border-sidebar-border p-2">
         <button
           onClick={addRoot}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted-foreground transition-all hover:bg-muted/70 hover:text-foreground active:scale-[0.98]"
         >
           <Plus className="h-3.5 w-3.5" />
           Add feature

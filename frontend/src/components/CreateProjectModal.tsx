@@ -36,11 +36,11 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="w-full max-w-md rounded-xl border border-border bg-popover p-6 shadow-[var(--shadow-elevated)]"
+        className="w-full max-w-md rounded-2xl bg-popover p-6 shadow-[var(--shadow-elevated)]"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">New Project</h2>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onClose} className="cursor-pointer rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -76,7 +76,7 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
                 key={c}
                 type="button"
                 onClick={() => setColor(c)}
-                className={`h-7 w-7 rounded-md border-2 transition-transform ${color === c ? "scale-110 border-foreground" : "border-transparent"}`}
+                className={`h-7 w-7 cursor-pointer rounded-md border-2 transition-transform ${color === c ? "scale-110 border-foreground" : "border-transparent"}`}
                 style={{ background: `var(--primary)`, opacity: c === color ? 1 : 0.4 }}
               />
             ))}
@@ -91,7 +91,7 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
                 key={i}
                 type="button"
                 onClick={() => setIcon(i)}
-                className={`rounded-md border px-2.5 py-1 text-xs ${icon === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
+                className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs ${icon === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
               >
                 {i}
               </button>
@@ -109,17 +109,17 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+            className="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-sm transition-all hover:bg-muted active:scale-[0.97]"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={busy}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Create Project
+            Create project
           </button>
         </div>
       </form>

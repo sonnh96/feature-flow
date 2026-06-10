@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 import uuid
 
 import sqlalchemy as sa
@@ -8,6 +8,10 @@ from sqlalchemy.types import CHAR, TypeDecorator
 
 
 Base = declarative_base()
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class GUID(TypeDecorator):
@@ -66,7 +70,7 @@ user_roles = sa.Table(
     Base.metadata,
     sa.Column("user_id", GUID(), sa.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
     sa.Column("role_id", GUID(), sa.ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
-    sa.Column("created_at", sa.DateTime, default=datetime.utcnow),
+    sa.Column("created_at", sa.DateTime, default=utc_now),
 )
 
 role_permissions = sa.Table(
@@ -88,8 +92,8 @@ class Project(Base):
     source_type = sa.Column(sa.String, nullable=False, default="manual")
     # 'metadata' is reserved by SQLAlchemy declarative classes.
     metadata_json = sa.Column("metadata", sa.JSON, nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
-    updated_at = sa.Column(sa.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
+    updated_at = sa.Column(sa.DateTime, default=utc_now, onupdate=utc_now)
 
     features = relationship("Feature", back_populates="project", cascade="all, delete-orphan")
     members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
@@ -134,8 +138,8 @@ class Feature(Base):
     updated_by = sa.Column(sa.String, nullable=True)
     metadata_json = sa.Column("metadata", sa.JSON, nullable=True)
 
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
-    updated_at = sa.Column(sa.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
+    updated_at = sa.Column(sa.DateTime, default=utc_now, onupdate=utc_now)
 
     project = relationship("Project", back_populates="features")
     parent = relationship("Feature", remote_side=[id], backref="children")
@@ -177,8 +181,8 @@ class FeatureRelation(Base):
     relation_type = sa.Column(sa.String, nullable=False)
     confidence = sa.Column(sa.Float, nullable=False, default=1.0)
     created_by = sa.Column(sa.String, nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
-    updated_at = sa.Column(sa.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
+    updated_at = sa.Column(sa.DateTime, default=utc_now, onupdate=utc_now)
 
     source_feature = relationship("Feature", foreign_keys=[source_feature_id], back_populates="outgoing_relations")
     target_feature = relationship("Feature", foreign_keys=[target_feature_id], back_populates="incoming_relations")
@@ -198,7 +202,7 @@ class FeatureEvidence(Base):
     confidence = sa.Column(sa.Float, nullable=False, default=1.0)
     notes = sa.Column(sa.Text, nullable=True)
     payload = sa.Column(sa.JSON, nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     feature = relationship("Feature", back_populates="evidence")
 
@@ -218,7 +222,7 @@ class FeatureVersion(Base):
     generated_from_commit = sa.Column(sa.String, nullable=True)
     author_id = sa.Column(sa.String, nullable=True)
     commit_message = sa.Column(sa.String, nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     feature = relationship("Feature", back_populates="versions")
 
@@ -237,7 +241,7 @@ class FeatureHistory(Base):
     new_value = sa.Column(sa.Text, nullable=True)
     commit_ref = sa.Column(sa.String, nullable=True)
     changed_by = sa.Column(sa.String, nullable=True)
-    changed_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    changed_at = sa.Column(sa.DateTime, default=utc_now)
     notes = sa.Column(sa.Text, nullable=True)
 
     feature = relationship("Feature", back_populates="history")
@@ -255,7 +259,7 @@ class ReviewTask(Base):
     status = sa.Column(sa.String, nullable=False, default="open")
     reviewer = sa.Column(sa.String, nullable=True)
     resolution_notes = sa.Column(sa.Text, nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
     resolved_at = sa.Column(sa.DateTime, nullable=True)
 
     feature = relationship("Feature", back_populates="review_tasks")
@@ -267,7 +271,7 @@ class Role(Base):
     id = sa.Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = sa.Column(sa.String(50), unique=True, nullable=False)
     description = sa.Column(sa.String(255), nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     users = relationship("User", secondary=user_roles, back_populates="roles")
     permissions = relationship("Permission", secondary=role_permissions, back_populates="roles", lazy="selectin")
@@ -282,7 +286,7 @@ class Permission(Base):
     id = sa.Column(GUID(), primary_key=True, default=uuid.uuid4)
     resource = sa.Column(sa.String(50), nullable=False)
     action = sa.Column(sa.String(50), nullable=False)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     roles = relationship("Role", secondary=role_permissions, back_populates="permissions")
 
@@ -295,8 +299,8 @@ class User(Base):
     hashed_password = sa.Column(sa.String, nullable=False, default="")
     display_name = sa.Column(sa.String, nullable=True)
     status = sa.Column(sa.String, nullable=False, default="active")
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
-    updated_at = sa.Column(sa.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
+    updated_at = sa.Column(sa.DateTime, default=utc_now, onupdate=utc_now)
 
     project_memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")
     roles = relationship("Role", secondary=user_roles, back_populates="users", lazy="selectin")
@@ -312,7 +316,7 @@ class ProjectMember(Base):
     project_id = sa.Column(GUID(), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     user_id = sa.Column(GUID(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role = sa.Column(sa.String, nullable=False, default="viewer")
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     project = relationship("Project", back_populates="members")
     user = relationship("User", back_populates="project_memberships")
@@ -329,7 +333,7 @@ class Attachment(Base):
     url = sa.Column(sa.String, nullable=True)
     metadata_json = sa.Column("metadata", sa.JSON, nullable=True)
     created_by = sa.Column(sa.String, nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     feature = relationship("Feature", back_populates="attachments")
 
@@ -344,7 +348,7 @@ class Tag(Base):
     project_id = sa.Column(GUID(), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     name = sa.Column(sa.String, nullable=False)
     color = sa.Column(sa.String, nullable=True)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     project = relationship("Project", back_populates="tags")
     features = relationship("Feature", secondary=feature_tags, back_populates="tag_records")
@@ -366,7 +370,7 @@ class ExtractionJob(Base):
     model_name = sa.Column(sa.String, nullable=True)
     metrics = sa.Column(sa.JSON, nullable=True)
     error_message = sa.Column(sa.Text, nullable=True)
-    started_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    started_at = sa.Column(sa.DateTime, default=utc_now)
     completed_at = sa.Column(sa.DateTime, nullable=True)
 
     project = relationship("Project", back_populates="extraction_jobs")
@@ -383,7 +387,7 @@ class RepositorySnapshot(Base):
     repo_name = sa.Column(sa.String, nullable=False)
     revision = sa.Column(sa.String, nullable=True)
     raw_snapshot = sa.Column(sa.JSON, nullable=False)
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     extraction_job = relationship("ExtractionJob", back_populates="snapshots")
 
@@ -405,6 +409,6 @@ class FeatureCandidate(Base):
     technical_members = sa.Column(sa.JSON, nullable=True)
     normalized_payload = sa.Column(sa.JSON, nullable=True)
     review_status = sa.Column(sa.String, nullable=False, default="unprocessed")
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
+    created_at = sa.Column(sa.DateTime, default=utc_now)
 
     extraction_job = relationship("ExtractionJob", back_populates="candidates")

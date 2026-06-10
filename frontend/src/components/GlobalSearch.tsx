@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useStore } from "@/lib/store";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { useStore, fromApiFeature } from "@/lib/store";
 import { useProjects } from "@/lib/projects";
+import { apiFetch } from "@/lib/api";
 import { Search, X, ChevronRight } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
+import type { Feature } from "@/lib/types";
 
 interface SearchState {
   isOpen: boolean;
@@ -30,9 +32,9 @@ export function GlobalSearch() {
   const [recent, setRecent] = useState<string[]>([]);
   const navigate = useNavigate();
 
-  const features = useStore((s) => s.features);
   const { projects } = useProjects();
   const getBreadcrumb = useStore((s) => s.getBreadcrumb);
+  const [results, setResults] = useState<Feature[]>([]);
 
   // try to read current project from URL
   let currentProjectId: string | undefined;
@@ -70,25 +72,25 @@ export function GlobalSearch() {
     return () => clearTimeout(t);
   }, [query]);
 
-  const results = useMemo(() => {
-    let list = features;
-    if (scope === "current" && currentProjectId)
-      list = list.filter((f) => f.projectId === currentProjectId);
-    if (statusFilter) list = list.filter((f) => f.status === statusFilter);
-    const q = debounced.trim().toLowerCase();
-    if (!q) return list.slice(0, 30);
-    return list
-      .filter(
-        (f) =>
-          f.name.toLowerCase().includes(q) ||
-          f.featureCode.toLowerCase().includes(q) ||
-          f.description.toLowerCase().includes(q) ||
-          f.businessRules.toLowerCase().includes(q) ||
-          f.tags.some((t) => t.toLowerCase().includes(q)) ||
-          (f.assignee?.toLowerCase().includes(q) ?? false),
-      )
-      .slice(0, 50);
-  }, [features, debounced, scope, currentProjectId, statusFilter]);
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (debounced.trim()) params.set("q", debounced.trim());
+    if (scope === "current" && currentProjectId) params.set("project_id", currentProjectId);
+    if (statusFilter) params.set("status", statusFilter);
+    params.set("limit", "50");
+    apiFetch(`/api/v1/search?${params.toString()}`)
+      .then((data) => {
+        if (!cancelled) setResults((data?.results ?? []).map(fromApiFeature));
+      })
+      .catch(() => {
+        if (!cancelled) setResults([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, debounced, scope, currentProjectId, statusFilter]);
 
   const grouped = useMemo(() => {
     return {
@@ -110,7 +112,7 @@ export function GlobalSearch() {
   };
 
   const goTo = (featureId: string) => {
-    const f = features.find((x) => x.id === featureId);
+    const f = results.find((x) => x.id === featureId);
     if (!f) return;
     saveRecent(query);
     close();
@@ -137,14 +139,14 @@ export function GlobalSearch() {
     );
   };
 
-  const renderRow = (f: (typeof features)[number]) => {
+  const renderRow = (f: Feature) => {
     const trail = getBreadcrumb(f.id);
     const project = projects.find((p) => p.id === f.projectId);
     return (
       <button
         key={f.id}
         onClick={() => goTo(f.id)}
-        className="flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted"
+        className="flex w-full cursor-pointer items-start gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -191,7 +193,7 @@ export function GlobalSearch() {
       onClick={close}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-[var(--shadow-elevated)]"
+        className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-popover shadow-[var(--shadow-elevated)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-border px-4">
@@ -203,7 +205,10 @@ export function GlobalSearch() {
             placeholder="Search features, tags, descriptions…"
             className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-muted-foreground"
           />
-          <button onClick={close} className="text-muted-foreground hover:text-foreground">
+          <button
+            onClick={close}
+            className="cursor-pointer rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -213,13 +218,13 @@ export function GlobalSearch() {
           <button
             onClick={() => setScope("current")}
             disabled={!currentProjectId}
-            className={`rounded px-2 py-1 ${scope === "current" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"} disabled:opacity-50`}
+            className={`cursor-pointer rounded px-2 py-1 ${scope === "current" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             Current project
           </button>
           <button
             onClick={() => setScope("all")}
-            className={`rounded px-2 py-1 ${scope === "all" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
+            className={`cursor-pointer rounded px-2 py-1 ${scope === "all" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
           >
             All projects
           </button>
@@ -228,7 +233,7 @@ export function GlobalSearch() {
             <button
               key={s}
               onClick={() => setStatusFilter(statusFilter === s ? null : s)}
-              className={`rounded px-2 py-1 capitalize ${statusFilter === s ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
+              className={`cursor-pointer rounded px-2 py-1 capitalize ${statusFilter === s ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
             >
               {s.replace("_", " ")}
             </button>
@@ -238,15 +243,13 @@ export function GlobalSearch() {
         <div className="scroll-thin flex-1 overflow-y-auto p-2">
           {!debounced && recent.length > 0 && (
             <div className="mb-2 px-2 pt-1">
-              <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Recent
-              </div>
+              <div className="mb-1 text-[11px] font-semibold text-muted-foreground">Recent</div>
               <div className="flex flex-wrap gap-1">
                 {recent.map((r) => (
                   <button
                     key={r}
                     onClick={() => setQuery(r)}
-                    className="rounded-md border border-border bg-muted/50 px-2 py-1 text-xs hover:bg-muted"
+                    className="cursor-pointer rounded-md border border-border bg-muted/50 px-2 py-1 text-xs hover:bg-muted"
                   >
                     {r}
                   </button>
@@ -304,7 +307,7 @@ function Group({
 }) {
   return (
     <div className="mb-2">
-      <div className="flex items-center justify-between px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="flex items-center justify-between px-3 pb-1 pt-2 text-[11px] font-semibold text-muted-foreground">
         <span>{title}</span>
         <span>{count}</span>
       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   ChevronRight,
@@ -11,7 +11,11 @@ import {
   Check,
   ExternalLink,
   GripVertical,
+  Pencil,
+  Loader2,
 } from "lucide-react";
+import { FeatureFormModal } from "./FeatureFormModal";
+import type { FeatureFormData } from "./FeatureFormModal";
 import {
   useStore,
   labelStatus,
@@ -26,7 +30,6 @@ import { MarkdownEditor } from "./MarkdownEditor";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { nanoid } from "nanoid";
-import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 
 const STATUSES: Status[] = ["todo", "in_progress", "done", "deprecated"];
@@ -60,6 +63,16 @@ export function FeatureDetail({
   const addRelation = useStore((s) => s.addRelation);
   const removeRelation = useStore((s) => s.removeRelation);
   const getBreadcrumb = useStore((s) => s.getBreadcrumb);
+  const loadFeature = useStore((s) => s.loadFeature);
+  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
+
+  // Always fetch the freshest copy of this feature when opened, so the detail
+  // renders even on a cold store (deep link / hard reload / fast navigation).
+  useEffect(() => {
+    setChecking(true);
+    loadFeature(featureId).finally(() => setChecking(false));
+  }, [featureId, loadFeature]);
 
   const breadcrumb = (() => {
     const trail: typeof allFeatures = [];
@@ -85,6 +98,7 @@ export function FeatureDetail({
   const [tagInput, setTagInput] = useState("");
   const [acInput, setAcInput] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState(feature?.description || "");
   const [businessRulesDraft, setBusinessRulesDraft] = useState(feature?.businessRules || "");
 
@@ -102,7 +116,7 @@ export function FeatureDetail({
   if (!feature || !project) {
     return (
       <div className="grid h-full place-items-center text-sm text-muted-foreground">
-        Feature not found.
+        {checking ? <Loader2 className="h-5 w-5 animate-spin" /> : "Feature not found."}
       </div>
     );
   }
@@ -136,7 +150,10 @@ export function FeatureDetail({
           {breadcrumb.slice(0, -1).map((b) => (
             <span key={b.id} className="flex items-center gap-1">
               <ChevronRight className="h-3 w-3" />
-              <button onClick={() => onSelect(b.id)} className="hover:text-foreground">
+              <button
+                onClick={() => onSelect(b.id)}
+                className="cursor-pointer hover:text-foreground"
+              >
                 {b.name}
               </button>
             </span>
@@ -230,10 +247,13 @@ export function FeatureDetail({
           </div>
 
           <div className="flex items-center gap-1">
+            <IconBtn title="Edit" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" />
+            </IconBtn>
             <IconBtn
               title="Duplicate"
-              onClick={() => {
-                const dup = duplicateFeature(featureId);
+              onClick={async () => {
+                const dup = await duplicateFeature(featureId);
                 if (dup) onSelect(dup.id);
               }}
             >
@@ -249,9 +269,13 @@ export function FeatureDetail({
             </IconBtn>
             <IconBtn
               title="Delete"
-              onClick={() => {
+              onClick={async () => {
                 if (confirm(`Delete "${feature.name}" and all its sub-features?`)) {
-                  deleteFeature(featureId);
+                  const ok = await deleteFeature(featureId);
+                  if (ok) {
+                    toast.success("Feature deleted");
+                    navigate({ to: "/projects/$projectId", params: { projectId: project.id } });
+                  }
                 }
               }}
             >
@@ -301,34 +325,16 @@ export function FeatureDetail({
                 <div className="mt-2 flex gap-2">
                   <button
                     onClick={async () => {
-                      try {
-                        // create version
-                        await apiFetch(`/api/v1/features/${featureId}/versions/`, {
-                          method: "POST",
-                          body: JSON.stringify({ content: descriptionDraft }),
-                        });
-                        // update feature
-                        const updated = await apiFetch(`/api/v1/features/${featureId}`, {
-                          method: "PATCH",
-                          body: JSON.stringify({ markdown_content: descriptionDraft }),
-                        });
-                        updateFeature(featureId, {
-                          description: descriptionDraft,
-                          updatedAt: updated.updated_at || new Date().toISOString(),
-                        });
-                        toast.success("Saved");
-                      } catch (e) {
-                        console.error(e);
-                        toast.error("Save failed");
-                      }
+                      const ok = await updateFeature(featureId, { description: descriptionDraft });
+                      if (ok) toast.success("Saved");
                     }}
-                    className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97]"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setDescriptionDraft(feature.description)}
-                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm hover:bg-muted"
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm transition-all hover:bg-muted active:scale-[0.97]"
                   >
                     Cancel
                   </button>
@@ -343,17 +349,19 @@ export function FeatureDetail({
                 />
                 <div className="mt-2 flex gap-2">
                   <button
-                    onClick={() => {
-                      updateFeature(featureId, { businessRules: businessRulesDraft });
-                      toast.success("Business rules saved");
+                    onClick={async () => {
+                      const ok = await updateFeature(featureId, {
+                        businessRules: businessRulesDraft,
+                      });
+                      if (ok) toast.success("Business rules saved");
                     }}
-                    className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97]"
                   >
                     Save rules
                   </button>
                   <button
                     onClick={() => setBusinessRulesDraft(feature.businessRules)}
-                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm hover:bg-muted"
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm transition-all hover:bg-muted active:scale-[0.97]"
                   >
                     Cancel
                   </button>
@@ -370,11 +378,9 @@ export function FeatureDetail({
 
             <div className="space-y-4">
               <MetaCard label="Assignee">
-                <input
+                <AssigneeInput
                   value={feature.assignee ?? ""}
-                  onChange={(e) => updateFeature(featureId, { assignee: e.target.value || null })}
-                  placeholder="Unassigned"
-                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  onCommit={(v) => updateFeature(featureId, { assignee: v || null })}
                 />
               </MetaCard>
               <MetaCard label="Target date">
@@ -438,7 +444,7 @@ export function FeatureDetail({
                   <span className="text-xs text-muted-foreground">{c.assignee ?? "—"}</span>
                   <button
                     onClick={() => onSelect(c.id)}
-                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </button>
@@ -452,13 +458,17 @@ export function FeatureDetail({
             </ul>
 
             <InlineAddSub
-              onAdd={(name) => {
-                const f = createFeature({
-                  projectId: project.id,
-                  parentId: featureId,
-                  name,
-                });
-                onSelect(f.id);
+              onAdd={async (name) => {
+                try {
+                  const f = await createFeature({
+                    projectId: project.id,
+                    parentId: featureId,
+                    name,
+                  });
+                  onSelect(f.id);
+                } catch {
+                  toast.error("Failed to add sub-feature");
+                }
               }}
             />
           </div>
@@ -468,7 +478,7 @@ export function FeatureDetail({
           <div className="space-y-4">
             <button
               onClick={() => setLinkOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-sm hover:bg-muted"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm transition-all hover:bg-muted active:scale-[0.97]"
             >
               <Plus className="h-3.5 w-3.5" /> Link feature
             </button>
@@ -497,13 +507,13 @@ export function FeatureDetail({
                     <StatusBadge status={other.status} />
                     <button
                       onClick={() => onSelect(other.id)}
-                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => removeRelation(r.id)}
-                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                      className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -529,6 +539,35 @@ export function FeatureDetail({
               />
             )}
           </div>
+        )}
+
+        {/* ── Edit modal ─────────────────────────────────────────────── */}
+        {editOpen && (
+          <FeatureFormModal
+            mode="edit"
+            projectId={project.id}
+            feature={feature}
+            onClose={() => setEditOpen(false)}
+            onSave={async (data: FeatureFormData) => {
+              await updateFeature(
+                featureId,
+                {
+                  name: data.name,
+                  featureType: data.featureType,
+                  status: data.status,
+                  priority: data.priority,
+                  assignee: data.assignee,
+                  targetDate: data.targetDate,
+                  tags: data.tags,
+                  description: data.description,
+                  links: data.links,
+                  attachments: data.attachments,
+                },
+                "edit-modal",
+              );
+              setDescriptionDraft(data.description);
+            }}
+          />
         )}
 
         {tab === "history" && (
@@ -578,9 +617,7 @@ export function FeatureDetail({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
+      <h3 className="mb-2.5 text-[11px] font-semibold text-muted-foreground">{title}</h3>
       {children}
     </section>
   );
@@ -588,12 +625,36 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function MetaCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-3">
-      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="rounded-lg bg-card p-3 shadow-[var(--shadow-soft)]">
+      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
         {label}
       </div>
       {children}
     </div>
+  );
+}
+
+// Local-draft input that only persists (one PATCH) when the user blurs or
+// presses Enter — avoids a network round-trip on every keystroke.
+function AssigneeInput({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+  const commit = () => {
+    if (draft.trim() !== value.trim()) onCommit(draft.trim());
+  };
+  return (
+    <input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      placeholder="Unassigned"
+      className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+    />
   );
 }
 
@@ -610,7 +671,7 @@ function IconBtn({
     <button
       title={title}
       onClick={onClick}
-      className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+      className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.92]"
     >
       {children}
     </button>
@@ -678,7 +739,7 @@ function InlineAddSub({ onAdd }: { onAdd: (name: string) => void }) {
       />
       <button
         type="submit"
-        className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+        className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97]"
       >
         Add
       </button>
@@ -741,7 +802,7 @@ function LinkFeatureModal({
             <li key={f.id}>
               <button
                 onClick={() => onPick(f.id, type)}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
               >
                 <StatusBadge status={f.status} />
                 <span className="truncate">{f.name}</span>
@@ -832,7 +893,7 @@ function AcceptanceCriteriaSection({
               <GripVertical className="mt-1 h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/40 opacity-0 group-hover:opacity-100" />
               <button
                 onClick={() => toggle(a.id)}
-                className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors ${
+                className={`mt-0.5 grid h-4 w-4 shrink-0 cursor-pointer place-items-center rounded border transition-colors ${
                   a.done
                     ? "border-status-done bg-status-done text-white"
                     : "border-border hover:border-status-done"
@@ -886,7 +947,7 @@ function AcceptanceCriteriaSection({
               )}
               <button
                 onClick={() => remove(a.id)}
-                className="opacity-0 group-hover:opacity-100"
+                className="cursor-pointer rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100"
                 aria-label="Remove criterion"
               >
                 <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
@@ -911,7 +972,7 @@ function AcceptanceCriteriaSection({
         />
         <button
           onClick={add}
-          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+          className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97]"
         >
           <Plus className="h-3.5 w-3.5" /> Add
         </button>

@@ -39,7 +39,7 @@ def payload_dict(payload: Any, *, exclude_unset: bool = True) -> dict[str, Any]:
     return payload.dict(exclude_unset=exclude_unset)
 
 
-def serialize_dt(value):
+def serialize_dt(value: Any) -> str | None:
     return value.isoformat() if value else None
 
 
@@ -135,6 +135,9 @@ async def get_feature_or_404(db: AsyncSession, feature_id: UUID) -> models.Featu
     return feature
 
 
+MAX_HIERARCHY_DEPTH = 20
+
+
 async def validate_parent(
     db: AsyncSession,
     *,
@@ -150,7 +153,11 @@ async def validate_parent(
     if not parent or parent.project_id != project_id:
         raise HTTPException(status_code=422, detail="Parent feature must belong to the same project")
     cursor = parent
+    depth = 0
     while cursor.parent_id:
+        depth += 1
+        if depth > MAX_HIERARCHY_DEPTH:
+            raise HTTPException(status_code=422, detail=f"Feature hierarchy exceeds maximum depth of {MAX_HIERARCHY_DEPTH}")
         if feature_id and cursor.parent_id == feature_id:
             raise HTTPException(status_code=422, detail="Circular feature hierarchy is not allowed")
         cursor = await db.get(models.Feature, cursor.parent_id)
@@ -213,7 +220,10 @@ async def list_features(
     if parent_id == "null":
         query = query.where(models.Feature.parent_id.is_(None))
     elif parent_id:
-        query = query.where(models.Feature.parent_id == UUID(parent_id))
+        try:
+            query = query.where(models.Feature.parent_id == UUID(parent_id))
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Invalid parent_id UUID: {parent_id}")
     if status:
         query = query.where(models.Feature.status == status)
     if review_status:

@@ -138,13 +138,16 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
         select(models.Role).where(models.Role.name == default_role_name)
     )
     role = role_result.scalar_one_or_none()
+    role_names = []
     if role:
-        user.roles.append(role)
+        await db.execute(
+            models.user_roles.insert().values(user_id=user.id, role_id=role.id)
+        )
+        role_names = [role.name]
 
     await db.commit()
     await db.refresh(user)
 
-    role_names = [r.name for r in user.roles]
     return TokenResponse(
         access_token=create_access_token(str(user.id), user.email, role_names),
         refresh_token=create_refresh_token(str(user.id)),
